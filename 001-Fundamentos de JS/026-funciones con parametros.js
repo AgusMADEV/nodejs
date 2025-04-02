@@ -3,6 +3,6 @@ function diHola(nombre){
 }
 
 console.log(diHola());
-console.log(diHola("Jose Vicente"));
-console.log(diHola("Juan"));
+console.log(diHola("Agustín"));
+console.log(diHola("Elena"));
 

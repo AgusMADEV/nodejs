@@ -3,6 +3,6 @@ function diHola(nombre,edad){
 }
 
 console.log(diHola());
-console.log(diHola("Jose Vicente",46));
-console.log(diHola("Juan",47));
+console.log(diHola("Agustín",25));
+console.log(diHola("Elena",25));
 
