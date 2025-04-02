@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<style>
+			html{font-family:sans-serif;background:rgb(220,220,220);}
+			body{width:300px;margin:auto;padding:20px;background:white;}
+			#mensajes{border:1px solid grey;width:300px;height:400px;overflow-y:scroll;}
+			input{width:300px;box-sizing:border-box;padding:10px;margin-top:20px;}
+			article{padding:10px;background:rgb(200,255,200);border-radius:0px 10px 10px 10px;margin:10px;}
+			h6{padding:0px;margin:0px;font-weight:normal;}
+			p{padding:0px;margin:0px;}
+			#persona{margin-bottom:20px;}
+		</style>
+	</head>
+	<body>
+		<input type="text" id="persona" placeholder="Dime quién eres">
+		<div id="mensajes">
+		</div>
+		<input type="text" id="mensaje">
+		<script>
+			function stringToMod360(input) {
+				 let sum = 0;
+				 for (let char of input) {
+					  sum += char.charCodeAt(0); // Get ASCII value and add to sum
+				 }
+				 return sum % 360; // Modulo to keep within 0-360 range
+			}
+			let usuario = ""
+			document.querySelector("#persona").onchange = function(){
+				usuario = this.value
+			}
+			let entrada = document.querySelector("#mensaje")
+			entrada.onchange = function(){
+				let mensaje = this.value							// El mensaje es lo que contiene el campo
+				this.value = ""										// Vacío el campo
+				fetch("http://localhost:3000/envia?mensaje="+encodeURI(mensaje)+"&usuario="+encodeURI(usuario))	// Envío mensaje
+			}
+			var temporizador = setTimeout("recibe()",1000)
+			function recibe(){
+				fetch("http://localhost:3000/recibe")
+				.then(function(response){
+					return response.json()
+				})
+				.then(function(datos){
+				
+				
+					let mensajes = document.querySelector("#mensajes")
+					mensajes.textContent = ""
+					datos.forEach(function(dato){
+						let articulo = document.createElement("article")
+						let cabecera = document.createElement("h6")
+						cabecera.textContent = dato.fecha + " - "+dato.usuario+":"
+						articulo.appendChild(cabecera)
+						let parrafo = document.createElement("p")
+						parrafo.textContent = dato.mensaje
+						articulo.appendChild(parrafo)
+						mensajes.appendChild(articulo)
+						articulo.style.background = 'hsl('+stringToMod360(dato.usuario)+'deg,50%,90%)'
+					})
+					mensajes.scrollTop = 1000000
+					
+				})
+				clearTimeout(temporizador)
+				temporizador = setTimeout("recibe()",1000)
+			}
+		</script>
+	</body>
+</html>
