@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+	<head>
+		<style>
+			html{font-family:sans-serif;background:rgb(220,220,220);}
+			body{width:300px;margin:auto;padding:20px;background:white;}
+			#mensajes{border:1px solid grey;width:300px;height:400px;overflow-y:scroll;}
+			input{width:300px;box-sizing:border-box;padding:10px;margin-top:20px;}
+			article{padding:10px;background:rgb(200,255,200);border-radius:0px 10px 10px 10px;margin:10px;}
+		</style>
+	</head>
+	<body>
+		<div id="mensajes">
+		</div>
+		<input type="text" id="mensaje">
+		<script>
+			let entrada = document.querySelector("input")
+			entrada.onchange = function(){
+				let mensaje = this.value							// El mensaje es lo que contiene el campo
+				this.value = ""										// Vacío el campo
+				fetch("http://localhost:3000/envia?mensaje="+encodeURI(mensaje))	// Envío mensaje
+			}
+			var temporizador = setTimeout("recibe()",1000)
+			function recibe(){
+				fetch("http://localhost:3000/recibe")
+				.then(function(response){
+					return response.json()
+				})
+				.then(function(datos){
+					let mensajes = document.querySelector("#mensajes")
+					mensajes.textContent = ""
+					datos.forEach(function(dato){
+						let articulo = document.createElement("article")
+						articulo.textContent = dato
+						mensajes.appendChild(articulo)
+					})
+					mensajes.scrollTop = 1000000
+				})
+				clearTimeout(temporizador)
+				temporizador = setTimeout("recibe()",1000)
+			}
+		</script>
+	</body>
+</html>
