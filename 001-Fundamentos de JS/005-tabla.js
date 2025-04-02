@@ -1,0 +1,1 @@
+console.table(["Primero","segundo"]);
