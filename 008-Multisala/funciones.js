@@ -5,3 +5,6 @@ function stringToMod360(input) {
 	 }
 	 return sum % 360; // Modulo to keep within 0-360 range
 }
+function hideEmojis() {
+	document.getElementById("emojis").style.display = "none";
+  }

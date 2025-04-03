@@ -5,6 +5,8 @@ let usuario = "";            // Current user's username
 let userId = "";             // Current user's unique ID
 let currentRoom = "global";  // Default chat room
 let temporizador;            // Timer for fetching messages
+let lastMessageCount = {}; // Ej.: { "global": 10, "private_user1_user2": 5 }
+
 
 // Utility Function: Convert a string to a color hue (0-360)
 function stringToMod360(str) {
@@ -98,15 +100,39 @@ function loadUserList() {
 
       // Agregar la sala global
       const liGlobal = document.createElement('li');
-      const aGlobal = document.createElement('a');
-      aGlobal.href = "#";
-      aGlobal.textContent = "Sala Global";
-      aGlobal.dataset.room = "global";
-      liGlobal.appendChild(aGlobal);
-      // Si la sala actual es la global, se añade la clase 'selected'
-      if (currentRoom === 'global') {
-        liGlobal.classList.add('selected');
+const aGlobal = document.createElement('a');
+aGlobal.href = "#";
+aGlobal.textContent = "Sala Global";
+aGlobal.dataset.room = "global";
+liGlobal.appendChild(aGlobal);
+
+if (currentRoom === 'global') {
+  liGlobal.classList.add('selected');
+  // Actualizar la cuenta de mensajes leídos para sala global
+  fetch(`http://localhost:3000/recibe?room=global`)
+    .then(res => res.json())
+    .then(mensajes => {
+      lastMessageCount['global'] = mensajes.length;
+    });
+} else {
+  // Si la sala global no está seleccionada, calcular los mensajes no leídos
+  fetch(`http://localhost:3000/recibe?room=global`)
+    .then(res => res.json())
+    .then(mensajes => {
+      if (lastMessageCount['global'] === undefined) {
+        lastMessageCount['global'] = mensajes.length;
       }
+      let totalMensajes = mensajes.length;
+      let leidos = lastMessageCount['global'] || 0;
+      let unread = totalMensajes - leidos;
+      if (unread > 0) {
+        let indicator = document.createElement('span');
+        indicator.classList.add('unread-indicator');
+        indicator.textContent = unread;
+        liGlobal.appendChild(indicator);
+      }
+    });
+}
       usuariosUl.appendChild(liGlobal);
 
       // Agregar las salas privadas
@@ -118,9 +144,35 @@ function loadUserList() {
           a.textContent = user.username;
           a.dataset.room = `private_${sortedRoomId(userId, user.id)}`; // ID única para la sala privada
           li.appendChild(a);
-          // Si la sala actual coincide con la sala privada, se marca como seleccionada
+
+          // Si la sala actual coincide, marcarla como seleccionada y actualizar la cuenta de mensajes
           if (a.dataset.room === currentRoom) {
             li.classList.add('selected');
+            fetch(`http://localhost:3000/recibe?room=${encodeURIComponent(a.dataset.room)}`)
+              .then(res => res.json())
+              .then(mensajes => {
+                lastMessageCount[a.dataset.room] = mensajes.length;
+              });
+          } else {
+            // Para las salas no activas, se consulta la cantidad total de mensajes
+            fetch(`http://localhost:3000/recibe?room=${encodeURIComponent(a.dataset.room)}`)
+              .then(res => res.json())
+              .then(mensajes => {
+                // Si no se había registrado una cuenta previa, se inicializa
+                if (lastMessageCount[a.dataset.room] === undefined) {
+                  lastMessageCount[a.dataset.room] = mensajes.length;
+                }
+                let totalMensajes = mensajes.length;
+                let leidos = lastMessageCount[a.dataset.room] || 0;
+                let unread = totalMensajes - leidos;
+                if (unread > 0) {
+                  // Crear un span para el indicador y agregarlo al li
+                  let indicator = document.createElement('span');
+                  indicator.classList.add('unread-indicator');
+                  indicator.textContent = unread;
+                  li.appendChild(indicator);
+                }
+              });
           }
           usuariosUl.appendChild(li);
         }
@@ -130,6 +182,7 @@ function loadUserList() {
       console.error('Error fetching user list:', err);
     });
 }
+
 
 
 // Function: Generate a sorted room ID for private chats
@@ -142,11 +195,10 @@ function sortedRoomId(id1, id2) {
 document.getElementById('usuarios').addEventListener('click', function(event) {
   event.preventDefault();
   if (event.target.tagName === 'A') {
-    // Quitar la clase 'selected' a todos los li
+    // Quitar la clase 'selected' a todos los li y agregarla al clickeado
     document.querySelectorAll('#usuarios li').forEach(li => {
       li.classList.remove('selected');
     });
-    // Agregar la clase 'selected' al li del enlace clickeado
     event.target.parentElement.classList.add('selected');
 
     const clickedUsername = event.target.textContent;
@@ -159,11 +211,21 @@ document.getElementById('usuarios').addEventListener('click', function(event) {
       document.getElementById('current-room').textContent = `Chat Privado con ${clickedUsername}`;
     }
 
-    // Limpiar los mensajes existentes y obtener los mensajes de la sala seleccionada
+    // Limpiar mensajes y cargar los de la sala seleccionada
     document.getElementById('mensajes').innerHTML = "";
     recibe();
+
+    // Actualizar la cuenta de mensajes leídos para esta sala
+    fetch(`http://localhost:3000/recibe?room=${encodeURIComponent(room)}`)
+      .then(response => response.json())
+      .then(mensajes => {
+        lastMessageCount[room] = mensajes.length;
+        // Actualiza la lista para quitar el indicador
+        loadUserList();
+      });
   }
 });
+
 
 
 // Function: Send a message
@@ -171,30 +233,33 @@ function enviarMensaje() {
   let mensajeInput = document.querySelector("#mensaje");
   let mensaje = mensajeInput.value.trim();
 
-  if (!mensaje) return; // Do not send empty messages
-  mensajeInput.value = ""; // Clear the input field
+  if (!mensaje) return; // No enviar mensajes vacíos
 
-  // Determine the target room
+  // Ocultar el desplegable de emojis
+  hideEmojis();
+
+  mensajeInput.value = ""; // Limpiar el input
+
+  // Determinar la sala destino
   let room = currentRoom;
 
-  // Send the message to the server without modifying the room ID
-  console.log(`Sending message to room: ${room}`);
-
+  // Enviar el mensaje al servidor
   fetch(
     `http://localhost:3000/envia?mensaje=${encodeURIComponent(mensaje)}&usuario=${encodeURIComponent(usuario)}&room=${encodeURIComponent(room)}`
   )
-  .then(response => response.json())
-  .then(data => {
-    if (data.error) {
-      console.error('Error sending message:', data.error);
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        console.error('Error sending message:', data.error);
+        alert("Error al enviar el mensaje.");
+      }
+    })
+    .catch(err => {
+      console.error('Error sending message:', err);
       alert("Error al enviar el mensaje.");
-    }
-  })
-  .catch(err => {
-    console.error('Error sending message:', err);
-    alert("Error al enviar el mensaje.");
-  });
+    });
 }
+
 
 // Event Listener: Handle click on the send button
 document.querySelector("#enviar").onclick = enviarMensaje;
@@ -202,6 +267,7 @@ document.querySelector("#enviar").onclick = enviarMensaje;
 // Event Listener: Handle "Enter" key press in the message input
 document.querySelector("#mensaje").addEventListener("keypress", function (e) {
   if (e.key === "Enter") {
+    hideEmojis();
     enviarMensaje();
   }
 });
@@ -268,6 +334,16 @@ document.querySelector("#emoji").onclick = function () {
   emojiContainer.style.display =
     emojiContainer.style.display === "block" ? "none" : "block";
 };
+
+document.addEventListener('click', function(event) {
+  let emojiContainer = document.getElementById("emojis");
+  let emojiButton = document.getElementById("emoji");
+
+  // Si el clic no es en el contenedor de emojis ni en el botón de emojis, ocultamos el desplegable
+  if (!emojiContainer.contains(event.target) && event.target !== emojiButton) {
+    hideEmojis();
+  }
+});
 
 // Handle emoji selection
 document.getElementById("emojis").addEventListener("click", function (event) {
