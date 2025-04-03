@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="estilo.css">
+    <title>jocarsa | antiquewhite</title>
+     <link rel="icon" type="image/svg+xml" href="agusmadev.png" />
+  </head>
+  <body>
+
+    <div id="chat-container">
+      <!-- Left Pane -->
+      <div id="user-list">
+        <img src="agusmadev.png" alt="Logo">
+        <h1>agusma.dev | chatdev</h1>
+        <h2>Usuarios</h2>
+        <ul id="usuarios">
+          <li><a href="#" data-room="global">Sala Global</a></li>
+        </ul>
+      </div>
+
+      <!-- Right Pane -->
+      <div id="chat-pane">
+        <div id="current-room">Sala Global</div>
+        <div id="mensajes"></div>
+        <div id="enviamensaje">
+          <div id="selectoremojis">
+            <button id="emoji">😊</button>
+            <div id="emojis"></div> <!-- Emojis se generan dinámicamente -->
+          </div>
+          <input type="text" id="mensaje" placeholder="Escribe tu mensaje">
+          <button id="enviar">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="funciones.js"></script>
+    <script src="cliente.js"></script>
+  </body>
+</html>
+

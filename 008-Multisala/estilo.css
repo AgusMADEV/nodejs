@@ -1,0 +1,261 @@
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+body {
+  font-family: Ubuntu, Arial, sans-serif;
+  background: linear-gradient(to right, #f4ecfd, #c4b5d3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+}
+
+img {
+  width: 100%;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 10px 0;
+}
+
+/* Chat container */
+#chat-container {
+  display: flex;
+  width: 90%;
+  max-width: 800px;
+  height: 600px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* User list */
+#user-list {
+  width: 25%;
+  background: #f1f1f1;
+  border-right: 1px solid #ccc;
+  padding: 10px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  text-align: center;
+}
+
+#user-list h2 {
+  margin-top: 0;
+}
+
+#user-list ul {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+}
+
+#usuarios li {
+  background: white;
+  color: black;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 5px 0;
+}
+#usuarios li.selected {
+  background: #5e17eb;
+  color: white;
+}
+#usuarios li a {
+  text-decoration: none;
+  color: inherit;
+}
+
+#user-list a {
+  text-decoration: none;
+  color: #007bff;
+  cursor: pointer;
+}
+
+#user-list a:hover {
+  text-decoration: underline;
+}
+
+/* Chat panel */
+#chat-pane {
+  width: 75%;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+#current-room {
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+#mensajes {
+  flex: 1;
+  background: linear-gradient(to right, #370694ff, #5e17eb);;
+  border-radius: 10px;
+  padding: 10px;
+  overflow-y: auto;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Mensajes */
+article {
+  padding: 8px;
+  border-radius: 5px;
+  margin-bottom: 5px;
+  transition: background 0.3s;
+}
+
+article:hover {
+  background: rgba(0, 123, 255, 0.1);
+}
+
+h6 {
+  margin: 0;
+  font-size: 12px;
+  color: #666;
+}
+
+p {
+  margin: 5px 0 0;
+}
+
+/* Input de mensaje */
+#enviamensaje {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  background: white;
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#mensaje {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+}
+
+#enviar {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s;
+  margin-left: 5px;
+}
+
+#enviar:hover {
+  background: #0056b3;
+}
+
+/* Selector de emojis */
+#selectoremojis {
+  position: relative;
+}
+
+#emoji {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* Contenedor del panel de emojis */
+#emojis {
+  display: none;
+  position: absolute;
+  bottom: 45px;
+  left: 0;
+  width: 300px;
+  max-height: 250px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  overflow-y: auto;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+  padding: 0;
+  z-index: 1000;
+}
+
+/* Contenedor de pestañas de categoría */
+/*.emoji-tabs {
+  position: fixed;
+  top: 391px;
+  left: 512px;
+  width: 250px;
+  display: flex;
+  justify-content: flex-start;
+  background-color: white;
+  border-bottom: 1px solid #ccc;
+  padding: 5px;
+  z-index: 20;
+}*/
+/* ESTE es el "header" interno */
+.emoji-tabs {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  border-bottom: 1px solid #ccc;
+  padding: 5px;
+  display: flex;
+  justify-content: flex-start;
+  z-index: 1; /* menor que el panel */
+}
+/* Botones de pestaña */
+.emoji-tab {
+  background-color: #f4f4f4;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 20px;
+  padding: 5px 10px;
+  margin-right: 5px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.emoji-tab:hover {
+  background-color: antiquewhite;
+}
+
+.emoji-tab.active {
+  background-color: #dcdcdc;
+  font-weight: bold;
+}
+
+/* Emoji grid */
+.emoji-grid {
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+/* Emoji individual */
+#emojiGrid span,
+#emojis span {
+  cursor: pointer;
+  font-size: 20px;
+  padding: 5px;
+  margin: 2px;
+  display: inline-block;
+  transition: background 0.2s ease;
+}
+
+#emojiGrid span:hover,
+#emojis span:hover {
+  background: antiquewhite;
+  border-radius: 5px;
+}
