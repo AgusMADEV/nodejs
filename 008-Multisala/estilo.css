@@ -125,6 +125,9 @@ h6 {
 
 p {
   margin: 5px 0 0;
+  white-space: normal;      /* Permite el ajuste de línea */
+  word-wrap: break-word;    /* Fuerza el corte de palabras largas */
+  overflow-wrap: break-word; /* Compatibilidad adicional */
 }
 
 /* Input de mensaje */
