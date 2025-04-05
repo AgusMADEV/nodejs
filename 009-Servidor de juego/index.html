@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<style>
+			.jugador{
+				position:absolute;
+				top:20px;
+				left:20px;
+			}
+			.bocadillo{
+				background:white;
+				padding:5px;
+				width:50px;
+				height:10px;
+				position:absolute;
+				border:1px solid grey;
+				line-height:10px;
+				font-size:8px;
+				top:-15px;
+				left:15px;
+				border-radius:5px 5px 5px 0px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="jugador">🐅<div class="bocadillo" contenteditable>hola</div></div>
+		<script>
+			var posx = 20;
+			var posy = 20;
+			var jugador = document.querySelector(".jugador")
+			document.addEventListener("keydown", function(event) {
+				 switch (event.key) {
+					  case "ArrowUp":
+						   posy--;
+						   break;
+					  case "ArrowDown":
+						   posy++;
+						   break;
+					  case "ArrowLeft":
+						   posx--;
+						   break;
+					  case "ArrowRight":
+						   posx++;
+						   break;
+				 }
+				 jugador.style.top = posy+"px"
+				 jugador.style.left = posx+"px"
+			});
+			let bocadillo = document.querySelector(".bocadillo")
+			bocadillo.onfocus = function(){
+				bocadillo.textContent = ""
+			}
+			bocadillo.onblur = function(){
+				console.log("Voy a enviar el mensaje")
+				
+			}
+		</script>
+	</body>
+</html>

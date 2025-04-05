@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Multiplayer Game (HTTP + Fetch)</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+      overflow: hidden;
+      /* Make sure terreno.avif is in your public folder if referencing directly like this: */
+      background: url('terreno.avif') no-repeat center center;
+      background-size: cover;
+    }
+    #loginForm {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #eee;
+      padding: 10px;
+      border: 1px solid #999;
+      z-index: 1000;
+    }
+    #gameArea {
+      display: none; /* Hidden until user logs in */
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .player {
+      position: absolute;
+      font-size: 32px;
+      user-select: none;
+      transition: top 0.5s, left 0.5s;
+      filter: drop-shadow(0px 5px 4px rgba(0, 0, 0, 0.9));
+    }
+    .myPlayer {
+      box-shadow: 0 0 5px 5px rgba(255,255,255,0.5);
+      border-radius: 50%;
+    }
+    .moving {
+      animation: bounce 0.1s infinite alternate;
+    }
+    @keyframes bounce {
+      0%   { transform: translateY(0);   }
+      100% { transform: translateY(-5px);}
+    }
+
+    .bocadillo {
+      background: white;
+      padding: 5px;
+      width: 80px;
+      position: absolute;
+      border: 1px solid grey;
+      font-size: 10px;
+      top: -30px;
+      left: 25px;
+      border-radius: 5px 5px 5px 0px;
+      overflow: hidden;
+      word-wrap: break-word;
+    }
+
+    .fruit {
+      position: absolute;
+      font-size: 28px;
+      transition: top 0.5s, left 0.5s;
+    }
+  </style>
+</head>
+<body>
+  <div id="loginForm">
+    <h3>Login</h3>
+    <div>
+      <label>Username:</label>
+      <input id="username" type="text" />
+    </div>
+    <div>
+      <label>Animal:</label>
+      <select id="animal">
+        <option value="🐶">🐶</option>
+        <option value="🐱">🐱</option>
+        <option value="🐯">🐯</option>
+        <option value="🦊">🦊</option>
+        <option value="🐻">🐻</option>
+        <option value="🦁">🦁</option>
+        <option value="🐸">🐸</option>
+        <option value="🐤">🐤</option>
+        <option value="🐼">🐼</option>
+        <option value="🦆">🦆</option>
+      </select>
+    </div>
+    <button id="startBtn">Start</button>
+  </div>
+
+  <div id="gameArea"></div>
+
+  <script>
+    let playerId = null;   
+    let posx = 20;
+    let posy = 20;
+    let players = {};
+    let fruits = [];
+
+    const loginForm = document.getElementById('loginForm');
+    const gameArea = document.getElementById('gameArea');
+    const usernameInput = document.getElementById('username');
+    const animalSelect = document.getElementById('animal');
+    const startBtn = document.getElementById('startBtn');
+
+    let playerElements = {};
+    let fruitElements = {};
+    let previousPositions = {};
+
+    window.addEventListener('load', async () => {
+      const storedId = localStorage.getItem('playerId');
+      if (storedId) {
+        try {
+          const response = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId: storedId })
+          });
+          const result = await response.json();
+          if (result.success) {
+            playerId = result.playerId;
+            players = result.players;
+            fruits = result.fruits || [];
+            posx = players[playerId].x;
+            posy = players[playerId].y;
+
+            loginForm.style.display = 'none';
+            gameArea.style.display = 'block';
+
+            startPolling();
+          } else {
+            loginForm.style.display = 'block';
+          }
+        } catch (err) {
+          console.error('Auto-login error', err);
+          loginForm.style.display = 'block';
+        }
+      } else {
+        loginForm.style.display = 'block';
+      }
+    });
+
+    startBtn.addEventListener('click', async () => {
+      const username = usernameInput.value.trim();
+      const animal = animalSelect.value;
+      if (!username) {
+        alert('Please enter a username!');
+        return;
+      }
+      try {
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, animal })
+        });
+        const result = await response.json();
+        if (result.success) {
+          playerId = result.playerId;
+          localStorage.setItem('playerId', playerId);
+
+          players = result.players;
+          fruits = result.fruits || [];
+
+          loginForm.style.display = 'none';
+          gameArea.style.display = 'block';
+
+          startPolling();
+        } else {
+          alert('Login error');
+        }
+      } catch (err) {
+        console.error('Login failed', err);
+      }
+    });
+
+    function startPolling() {
+      setInterval(async () => {
+        try {
+          const response = await fetch('/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId, x: posx, y: posy })
+          });
+          const result = await response.json();
+          if (result.success) {
+            players = result.players;
+            fruits = result.fruits;
+            renderPlayers();
+            renderFruits();
+          }
+        } catch (err) {
+          console.error('Polling error', err);
+        }
+      }, 1000);
+    }
+
+    function renderPlayers() {
+      for (let id in players) {
+        const p = players[id];
+        let el = playerElements[id];
+
+        if (!el) {
+          el = document.createElement('div');
+          el.className = 'player';
+          el.textContent = p.animal;
+
+          // Container for chat/scores
+          const bocadilloDiv = document.createElement('div');
+          bocadilloDiv.className = 'bocadillo';
+          el.appendChild(bocadilloDiv);
+
+          gameArea.appendChild(el);
+          playerElements[id] = el;
+        }
+
+        if (id === playerId) {
+          el.classList.add('myPlayer');
+        } else {
+          el.classList.remove('myPlayer');
+        }
+
+        el.style.top = p.y + 'px';
+        el.style.left = p.x + 'px';
+
+        const oldPos = previousPositions[id] || { x: p.x, y: p.y };
+        const isMoving = (oldPos.x !== p.x || oldPos.y !== p.y);
+        if (isMoving) {
+          el.classList.add('moving');
+        } else {
+          el.classList.remove('moving');
+        }
+        previousPositions[id] = { x: p.x, y: p.y };
+
+        // Display in the bocadillo
+        const bocadilloDiv = el.querySelector('.bocadillo');
+        if (id === playerId) {
+          // Separate the top line (username + score) from the editable message
+          bocadilloDiv.innerHTML = '';
+          const header = document.createElement('div');
+          header.style.fontWeight = 'bold';
+          header.textContent = p.username + ` (${p.score})`;
+          bocadilloDiv.appendChild(header);
+
+          const messageArea = document.createElement('div');
+          messageArea.contentEditable = true;
+          messageArea.innerText = p.message || '';
+          bocadilloDiv.appendChild(messageArea);
+
+          // Save message on ENTER
+          messageArea.addEventListener('keydown', async function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const newMessage = messageArea.innerText;
+              try {
+                const response = await fetch('/message', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ playerId, message: newMessage })
+                });
+                const result = await response.json();
+                if (result.success) {
+                  players = result.players;
+                  fruits = result.fruits;
+                  renderPlayers();
+                  renderFruits();
+                }
+              } catch (err) {
+                console.error('Message update error', err);
+              }
+              messageArea.blur();
+            }
+          });
+
+        } else {
+          bocadilloDiv.innerText = p.username + ` (${p.score}):\n` + (p.message || '');
+          bocadilloDiv.contentEditable = false;
+        }
+      }
+
+      // Remove old elements
+      for (let id in playerElements) {
+        if (!players[id]) {
+          gameArea.removeChild(playerElements[id]);
+          delete playerElements[id];
+          delete previousPositions[id];
+        }
+      }
+    }
+
+    function renderFruits() {
+      fruits.forEach(fruit => {
+        let el = fruitElements[fruit.id];
+        if (!el) {
+          el = document.createElement('div');
+          el.className = 'fruit';
+          el.textContent = fruit.emoji;
+          gameArea.appendChild(el);
+          fruitElements[fruit.id] = el;
+        }
+        el.style.top = fruit.y + 'px';
+        el.style.left = fruit.x + 'px';
+      });
+      for (let fruitId in fruitElements) {
+        if (!fruits.find(f => f.id === fruitId)) {
+          gameArea.removeChild(fruitElements[fruitId]);
+          delete fruitElements[fruitId];
+        }
+      }
+    }
+
+    document.addEventListener('keydown', async (event) => {
+      if (!playerId) return;
+      // Don’t move if typing in the message area
+      if (document.activeElement && document.activeElement.isContentEditable) {
+        return;
+      }
+      const step = 5;
+      switch (event.key) {
+        case 'ArrowUp':    posy -= step; break;
+        case 'ArrowDown':  posy += step; break;
+        case 'ArrowLeft':  posx -= step; break;
+        case 'ArrowRight': posx += step; break;
+        default: return;
+      }
+      try {
+        const response = await fetch('/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId, x: posx, y: posy })
+        });
+        const result = await response.json();
+        if (result.success) {
+          players = result.players;
+          fruits = result.fruits;
+          renderPlayers();
+          renderFruits();
+        }
+      } catch (err) {
+        console.error('Move error', err);
+      }
+    });
+  </script>
+</body>
+</html>
+
