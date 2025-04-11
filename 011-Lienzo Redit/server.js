@@ -1,59 +1,88 @@
 /**
  * server.js
  *
- * A plain Node.js HTTP server (no Express) that manages:
- *   - Painted cells (non-white)
- *   - NPCs that spawn on random painted cells every 10s
- *   - NPCs that move every 1s to a random adjacent painted cell
- * 
- * Endpoints:
- *   GET    /            -> serves the index.html file (the front-end)
- *   GET    /celdas      -> returns all painted cells
- *   POST   /save-cell   -> create/update a painted cell
- *   GET    /npcs        -> returns current NPCs (id, x, y)
+ * Plain Node.js HTTP server (no Express) that:
+ *   ...
  */
 
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-// In-memory storage (data is lost on restart)
-let paintedCells = []; // Array of { x, y, color }
-let npcs = [];         // Array of { id, x, y }
+const CELLS_FILE = "cells.json";
+const NPCS_FILE = "npcs.json";
 
-/* --- Utilities --- */
+// In-memory data
+let paintedCells = [];
+let npcs = [];
 
-/** Checks if a color is non-white (so "#fff" or "#ffffff" is not painted). */
+/* --------------------- Load Data from Disk --------------------- */
+function loadPaintedCells() {
+  try {
+    const data = fs.readFileSync(CELLS_FILE, "utf8");
+    paintedCells = JSON.parse(data);
+    console.log("[Load] Painted cells loaded from", CELLS_FILE);
+  } catch (err) {
+    console.log("[Load] No existing cells.json found, starting empty.");
+    paintedCells = [];
+  }
+}
+
+function loadNPCs() {
+  try {
+    const data = fs.readFileSync(NPCS_FILE, "utf8");
+    npcs = JSON.parse(data);
+    console.log("[Load] NPCs loaded from", NPCS_FILE);
+  } catch (err) {
+    console.log("[Load] No existing npcs.json found, starting empty.");
+    npcs = [];
+  }
+}
+
+loadPaintedCells();
+loadNPCs();
+
+/* --------------------- Save Data to Disk --------------------- */
+function savePaintedCells() {
+  fs.writeFile(CELLS_FILE, JSON.stringify(paintedCells, null, 2), err => {
+    if (err) console.error("[Save] Error saving paintedCells:", err);
+  });
+}
+
+function saveNPCs() {
+  fs.writeFile(NPCS_FILE, JSON.stringify(npcs, null, 2), err => {
+    if (err) console.error("[Save] Error saving npcs:", err);
+  });
+}
+
+/* --------------------- Utilities --------------------- */
+
 function isColored(color = "") {
   const c = color.trim().toLowerCase();
   return c !== "#fff" && c !== "#ffffff" && c !== "white";
 }
 
-/** Returns all painted (non-white) cells. */
 function getAllPaintedCells() {
   return paintedCells.filter(cell => isColored(cell.color));
 }
 
-/** Pick a random painted cell (or return null if none exist). */
 function getRandomPaintedCell() {
   const valid = getAllPaintedCells();
   if (valid.length === 0) return null;
-  const idx = Math.floor(Math.random() * valid.length);
-  return valid[idx];
+  const randIndex = Math.floor(Math.random() * valid.length);
+  return valid[randIndex];
 }
 
-/** Find a cell in paintedCells by (x,y). */
 function findCell(x, y) {
   return paintedCells.find(c => c.x === x && c.y === y);
 }
 
-/** Return an array of valid neighboring positions that are painted (4 directions). */
 function findColoredNeighbors(x, y) {
   const offsets = [
     { dx:  1, dy:  0 },
     { dx: -1, dy:  0 },
     { dx:  0, dy:  1 },
-    { dx:  0, dy: -1 },
+    { dx:  0, dy: -1 }
   ];
   const neighbors = [];
   offsets.forEach(({ dx, dy }) => {
@@ -67,9 +96,7 @@ function findColoredNeighbors(x, y) {
   return neighbors;
 }
 
-/* --- NPC Spawning & Movement --- */
-
-/** Spawn an NPC every 10 seconds on a random painted cell. */
+/* --------------------- NPC Timers --------------------- */
 setInterval(() => {
   const spawnCell = getRandomPaintedCell();
   if (spawnCell) {
@@ -80,58 +107,75 @@ setInterval(() => {
     };
     npcs.push(newNPC);
     console.log("[Spawn NPC]", newNPC);
+    saveNPCs();
   }
-}, 10000); // 10,000 ms = 10s
+}, 10000);
 
-/** Move NPCs every 1 second. */
 setInterval(() => {
+  let moved = false;
   npcs.forEach(npc => {
     const neighbors = findColoredNeighbors(npc.x, npc.y);
     if (neighbors.length > 0) {
-      const rand = Math.floor(Math.random() * neighbors.length);
-      npc.x = neighbors[rand].x;
-      npc.y = neighbors[rand].y;
+      const randIndex = Math.floor(Math.random() * neighbors.length);
+      npc.x = neighbors[randIndex].x;
+      npc.y = neighbors[randIndex].y;
+      moved = true;
     }
-    // Else stays put
   });
+  if (moved) {
+    saveNPCs();
+  }
 }, 1000);
 
-/* --- Create HTTP Server --- */
-const PORT = 3000;
+/* --------------------- Create HTTP Server --------------------- */
 
+const PORT = 3000;
 const server = http.createServer((req, res) => {
-  // Set CORS headers to allow requests from any origin (if needed)
+  // Minimal CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Handle preflight OPTIONS
   if (req.method === "OPTIONS") {
     res.writeHead(200);
     return res.end();
   }
-
-  if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
-    // Serve the index.html file
-    const filePath = path.join(__dirname, "index.html");
+	if (req.method === "GET" && req.url === "/npc.png") {
+    const filePath = path.join(__dirname, "npc.png");
     fs.readFile(filePath, (err, data) => {
       if (err) {
+        console.error("Error reading npc.png:", err);
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        return res.end("404 Not Found");
+      }
+      res.writeHead(200, { "Content-Type": "image/png" });
+      return res.end(data);
+    });
+    return; // Important: exit the handler after serving the image
+  }
+  // ========== Serve the main index.html on GET / ==========
+  if (req.method === "GET" && req.url === "/") {
+    fs.readFile("index.html", (err, fileData) => {
+      if (err) {
         res.writeHead(500, { "Content-Type": "text/plain" });
-        return res.end("Error loading index.html");
+        return res.end("Error: index.html not found or unreadable.");
       }
       res.writeHead(200, { "Content-Type": "text/html" });
-      res.end(data);
+      return res.end(fileData);
     });
+
   } else if (req.method === "GET" && req.url === "/celdas") {
-    // Return painted cells as JSON
+    // Return all painted cells
     const json = JSON.stringify(paintedCells);
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(json);
+
   } else if (req.method === "GET" && req.url === "/npcs") {
-    // Return NPCs as JSON
+    // Return all NPCs
     const json = JSON.stringify(npcs);
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(json);
+
   } else if (req.method === "POST" && req.url === "/save-cell") {
     // Save or update a painted cell
     let bodyData = "";
@@ -143,23 +187,26 @@ const server = http.createServer((req, res) => {
           res.writeHead(400, { "Content-Type": "application/json" });
           return res.end(JSON.stringify({ error: "Invalid data" }));
         }
-        // Update existing or add new cell
+        // find or add
         const idx = paintedCells.findIndex(c => c.x === x && c.y === y);
         if (idx >= 0) {
           paintedCells[idx].color = color;
         } else {
           paintedCells.push({ x, y, color });
         }
-        console.log(`[Save Cell] (${x}, ${y}) => ${color}`);
+        console.log(`[Save Cell] (${x},${y}) => ${color}`);
+        savePaintedCells();
+
         res.writeHead(200, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ status: "ok" }));
-      } catch (e) {
+      } catch (err) {
         res.writeHead(400, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ error: "Bad JSON format" }));
       }
     });
+
   } else {
-    // If no matching route, return 404 Not Found.
+    // 404 Not Found
     res.writeHead(404, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ error: "Not found" }));
   }
