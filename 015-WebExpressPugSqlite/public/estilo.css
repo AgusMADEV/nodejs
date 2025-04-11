@@ -1,0 +1,35 @@
+body,html{
+	background:lightgrey;
+	font-family:sans-serif;
+}
+header,main,footer{
+	background:white;
+	width:800px;
+	padding:20px;
+	margin:auto;
+}
+header{
+	text-align:center;
+}
+nav ul{
+	list-style-type:none;
+	padding:0px;
+	margin:0px;
+}
+nav ul li {
+	display:inline-block;
+	padding:10px;
+}
+#blog{
+	display:grid;
+	grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap:20px;
+}
+article{
+	text-align:center;
+
+}
+article img{
+	width:100%;
+}

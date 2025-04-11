@@ -1,0 +1,26 @@
+doctype html
+html
+	head
+		title #{titulo}
+		link(rel="Stylesheet" href="estilo.css")
+	body
+		header
+			h1 #{titulo}
+			nav
+				ul
+					li 
+						a(href="/") Inicio 
+					li 
+						a(href="/sobremi") Sobre mi
+					li 
+						a(href="/contacto") Contacto
+		main
+			section(id="blog")
+				each articulo in articulos
+					article
+						img(src=articulo.imagen)
+						h3= articulo.titulo
+						p= articulo.texto
+			
+		footer
+			h6 (c) 2025 Agustín Morcillo Aguado
